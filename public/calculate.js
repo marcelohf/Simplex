@@ -30,7 +30,7 @@ let $ = {
 
 const lclStorageKey = 'MOA - Calculadora Simplex'
 
-const findTerms = (row) => {
+const splitTerms = (row) => {
     let rowTerm = []
     const terms = row.split(/(?=\+|\-)/gm)
     terms.forEach(term => {
@@ -40,7 +40,7 @@ const findTerms = (row) => {
     return rowTerm
 }
 
-const findCoeff = (row) => {
+const extractCoefficients = (row) => {
     let vars = {}
     row.forEach(term => {
         const variable = /[a-z].+/gmi.exec(term)[0]
@@ -68,10 +68,10 @@ const findCoeff = (row) => {
     return vars
 }
 
-const parseObj = (iobj) => {
+const parseObjective = (iobj) => {
     const [mtarget, row] = iobj.split('=')
     const target = mtarget.trim().toLowerCase()
-    const objvalue = findCoeff(findTerms(row))
+    const objvalue = extractCoefficients(splitTerms(row))
     return { target, objvalue }
 }
 
@@ -92,8 +92,8 @@ const parseConstraint = (irows) => {
         return row.split('=')
     })
     const rVector = rows.map(row => parseFloat(row[1].trim()))
-    const rowTerms = rows.map(row => findTerms(row[0]))
-    const coeffDict = rowTerms.map(row => findCoeff(row))
+    const rowTerms = rows.map(row => splitTerms(row[0]))
+    const coeffDict = rowTerms.map(row => extractCoefficients(row))
     return { rVector, coeffDict, signs }
 }
 
@@ -132,14 +132,14 @@ const assignZeroCoeff = (cDict) => {
 
 const formMatrixA = (cDict) => cDict.map(row => $.variables.map(v => row[v]))
 
-const findRemaining = (matrix, i) => {
+const findRemainingRows = (matrix, i) => {
     return matrix.slice(0, i).concat(matrix.slice(i + 1, matrix.length))
 }
 
-const addVars = (q, i) => {
+const addVariables = (q, i) => {
     const rowWith1 = [...$.matrixA[i], q === 'srpls' ? -1 : 1]
     $.variables.push(`${q}${i}`)
-    const remainingRows = findRemaining($.matrixA, i)
+    const remainingRows = findRemainingRows($.matrixA, i)
     let newRemainingRows = remainingRows.map(row => [...row, 0])
     newRemainingRows.splice(i, 0, rowWith1)
     $.matrixA = newRemainingRows
@@ -147,16 +147,16 @@ const addVars = (q, i) => {
     return rowWith1.length - 1
 }
 
-const addSlackSurplusArtificial = (signs) => {
+const addSlackSurplusArtificialVariables = (signs) => {
     signs.forEach((sign, i) => {
         if (sign === 'le') {
-            const pivot = addVars('aux-', i)
+            const pivot = addVariables('aux-', i)
             $.pivots.push(pivot)
             return
         }
         if (sign === 'ge') {
-            addVars('srpls', i)
-            const pivot = addVars('artfcl', i)
+            addVariables('srpls', i)
+            const pivot = addVariables('artfcl', i)
             $.pivots.push(pivot)
             return
         }
@@ -164,7 +164,7 @@ const addSlackSurplusArtificial = (signs) => {
 }
 
 const standardForm = (iobj, irows) => {
-    const { target, objvalue } = parseObj(iobj)
+    const { target, objvalue } = parseObjective(iobj)
     let { rVector, coeffDict, signs } = parseConstraint(irows)
     getCostVector(objvalue)
     const bNegativeIndex = findBNegative(rVector)
@@ -175,7 +175,7 @@ const standardForm = (iobj, irows) => {
     printTableCardStandardForm('Matriz de entrada:')
     $.basicKount = $.variables.length
     printVariables('Base')
-    addSlackSurplusArtificial(signs)
+    addSlackSurplusArtificialVariables(signs)
     $.nonBasicKount = $.variables.length - $.basicKount
     $.artificialKount = $.variables.length - ($.basicKount + $.nonBasicKount)
     printTableCardStandardForm('Matriz de coeficientes após adição de folga/sobra e variáveis auxiliares:')
@@ -196,39 +196,39 @@ const getBFS = () => {
     return arr
 }
 
-const dotP = (v1, v2) => {
+const calculateDotProduct = (v1, v2) => {
     if (v1.length !== v2.length) return false
     let s = 0
     v1.forEach((q, i) => s += q * v2[i])
     return s
 }
 
-const vDivide = (v1, v2) => {
+const divideVectorsElementWise = (v1, v2) => {
     if (v1.length !== v2.length) return false
     let arr = []
     v1.forEach((q, i) => arr.push(q / v2[i]))
     return arr
 }
 
-const vSubtract = (v1, v2) => {
+const subtractVectorsElementWise = (v1, v2) => {
     if (v1.length !== v2.length) return false
     let arr = []
     v1.forEach((q, i) => arr.push(q - v2[i]))
     return arr
 }
 
-const getCJBar = (col, cVector, basis) => {
+const calculateCjMinusZj = (col, cVector, basis) => {
     let p = []
     for (let i = 0; i < $.dim[0]; i++) {
         p.push($.matrixA[i][col])
     }
-    return cVector[col] - dotP(p, basis)
+    return cVector[col] - calculateDotProduct(p, basis)
 }
 
-const findRCost = (cVector) => {
+const calculateReducedCosts = (cVector) => {
     let cjBar = []
     for (let j = 0; j < $.dim[1]; j++) {
-        cjBar.push(getCJBar(j, cVector, $.basis))
+        cjBar.push(calculateCjMinusZj(j, cVector, $.basis))
     }
     return cjBar
 }
@@ -237,18 +237,18 @@ const getBasicVars = () => $.pivots.map(p => $.variables[p])
 
 const getBasis = (cVector) => $.pivots.map(p => cVector[p])
 
-const getDim = () => {
+const getDimensions = () => {
     const m = $.rVector.length
     const n = $.variables.length
     return [m, n]
 }
 
-const findLeavingVar = (col) => {
+const findLeavingVariable = (col) => {
     let p = []
     for (let i = 0; i < $.dim[0]; i++) {
         p.push($.matrixA[i][col])
     }
-    $.ratio = vDivide($.rVector, p)
+    $.ratio = divideVectorsElementWise($.rVector, p)
     const filteredRatio = $.ratio.filter(q => q >= 0 && q !== Infinity)
     if (filteredRatio.length === 0) {
         $.unbounded = true
@@ -259,14 +259,14 @@ const findLeavingVar = (col) => {
     return index
 }
 
-const rowOperation = (row, col) => {
+const performRowOperation = (row, col) => {
     const element = $.matrixA[row][col]
     $.matrixA[row].forEach((q, i) => {
         $.matrixA[row][i] = q / element
     })
     $.rVector[row] = $.rVector[row] / element
-    const remainingRows = findRemaining($.matrixA, row)
-    const rRemaining = findRemaining($.rVector, row)
+    const remainingRows = findRemainingRows($.matrixA, row)
+    const rRemaining = findRemainingRows($.rVector, row)
     const pivotRow = $.matrixA[row]
     const rPivot = $.rVector[row]
 
@@ -274,7 +274,7 @@ const rowOperation = (row, col) => {
         const multiplier = r[col]
         const newRow = $.matrixA[row].map(q => q * multiplier)
         rRemaining[i] = rRemaining[i] - $.rVector[row] * multiplier
-        return vSubtract(r, newRow)
+        return subtractVectorsElementWise(r, newRow)
     })
     $.matrixA.splice(row, 0, pivotRow)
     $.rVector = rRemaining
@@ -287,7 +287,7 @@ const updatePivot = (row, col) => {
 
 const containsArtificial = () => $.basicVars.some(b => b.includes('artfcl'))
 
-const findTargetRCost = (target, rCost) => {
+const findTargetReducedCost = (target, rCost) => {
     if (target === 'min') {
         const min = Math.min(...rCost)
         if (min < 0) return min
@@ -298,7 +298,7 @@ const findTargetRCost = (target, rCost) => {
     return null
 }
 
-const getSoln = (v) => dotP(v, $.cBFS)
+const calculateSolution = (v) => calculateDotProduct(v, $.cBFS)
 
 const checkHistory = () => {
     const s = `${$.minmaxRCostIndex}${$.leavingIndex}${$.objZ}`
@@ -306,7 +306,7 @@ const checkHistory = () => {
     return $.history.push(s)
 }
 
-const checkDecimals = (n) => {
+const checkDecimalPlaces = (n) => {
     const decimals = `${n}`.search(/\.\d{6,}/gmi)
     if (decimals === -1) return n
     return n.toFixed(5)
@@ -316,13 +316,13 @@ const simplex = (phase) => {
     $.basis = (phase === 1) ? getBasis($.p1CostVector) : getBasis($.costVector)
     $.cBFS = getBFS()
     if ($.kount !== 1) printBFS()
-    $.objZ = (phase === 1) ? getSoln($.p1CostVector) : getSoln($.costVector)
-    $.rCost = (phase === 1) ? findRCost($.p1CostVector) : findRCost($.costVector)
-    $.minmaxRCost = (phase === 1) ? Math.min(...$.rCost) : findTargetRCost($.target, $.rCost)
+    $.objZ = (phase === 1) ? calculateSolution($.p1CostVector) : calculateSolution($.costVector)
+    $.rCost = (phase === 1) ? calculateReducedCosts($.p1CostVector) : calculateReducedCosts($.costVector)
+    $.minmaxRCost = (phase === 1) ? Math.min(...$.rCost) : findTargetReducedCost($.target, $.rCost)
     const card = printTableCard(phase)
     if (!$.minmaxRCost) return false
     $.minmaxRCostIndex = $.rCost.indexOf($.minmaxRCost)
-    $.leavingIndex = findLeavingVar($.minmaxRCostIndex)
+    $.leavingIndex = findLeavingVariable($.minmaxRCostIndex)
     printRatio(card)
     if ($.leavingIndex === -1) {
         const msg = 'Todas as razões mínimas são negativas ou infinitas, portanto a solução é ilimitada.'
@@ -336,12 +336,12 @@ const simplex = (phase) => {
         printWarning(msg, card)
         return false
     }
-    rowOperation($.leavingIndex, $.minmaxRCostIndex)
+    performRowOperation($.leavingIndex, $.minmaxRCostIndex)
     updatePivot($.leavingIndex, $.minmaxRCostIndex)
     return true
 }
 
-const removeArtificial = () => {
+const removeArtificialVariables = () => {
     let artificialIndex = []
     $.variables = $.variables.filter((v, i) => {
         if (v.includes('artfcl')) {
@@ -365,7 +365,7 @@ const removeArtificial = () => {
 
 const phase1 = () => {
     printSubtitle('Fase 1: remoção de variáveis artificiais')
-    $.dim = getDim()
+    $.dim = getDimensions()
     $.p1CostVector = getPhase1CostVector()
     while ($.kount <= $.maxIter) {
         $.basicVars = getBasicVars()
@@ -378,12 +378,12 @@ const phase1 = () => {
         return
     }
     if ($.unbounded) return
-    removeArtificial()
+    removeArtificialVariables()
 }
 
 const phase2 = () => {
     printSubtitle('Fase 2: encontrar a solução ideal')
-    $.dim = getDim()
+    $.dim = getDimensions()
     while ($.kount <= $.maxIter) {
         $.basicVars = getBasicVars()
         if (!simplex(2)) break

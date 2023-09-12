@@ -1,4 +1,4 @@
-const defaultInput = 'min = 3x1 + 2x2 + 1x3\n2x1 + x2 - x3 <= 18\n2x1 + 3x2 - 4x3 <= 42\n3x1 + x2 - 1x3 <= 24'
+const defaultInput = 'max = 3x1 + 2x2 + 1x3\n2x1 + 1x2 - 1x3 <= 18\n2x1 + 3x2 - 4x3 <= 42\n3x1 + 1x2 - 1x3 <= 24'
 
 const problem = document.getElementById('problem')
 const solve = document.getElementById('solve')
@@ -159,7 +159,7 @@ const eg1 = document.querySelector('textarea[name="eg1"]')
 eg1.value = 'max = 3x1 + 2x2 + 1x3'
 
 const eg2 = document.querySelector('textarea[name="eg2"]')
-eg2.value = '2x1 + x2 - x3 <= 18\n2x1 + 3x2 - 4x3 <= 42\n3x1 + x2 - 1x3 <= 24'
+eg2.value = '2x1 + 1x2 - 1x3 <= 18\n2x1 + 3x2 - 4x3 <= 42\n3x1 + 1x2 - 1x3 <= 24'
 
 const guideDetails = document.querySelectorAll('#guide .details')
 
@@ -233,7 +233,7 @@ const printTableStandardForm = () => {
     $.matrixA.forEach(row => {
         const tr = createNode('tr')
         row.forEach(col => {
-            const td = createNode('td', [], `${checkDecimals(col)}`)
+            const td = createNode('td', [], `${checkDecimalPlaces(col)}`)
             tr.appendChild(td)
         })
         tbody.appendChild(tr)
@@ -285,7 +285,7 @@ const printTableBFS = () => {
     const tbody = createNode('tbody')
     const tr = createNode('tr')
     $.cBFS.forEach(s => {
-        const td = createNode('td', [], `${checkDecimals(s)}`)
+        const td = createNode('td', [], `${checkDecimalPlaces(s)}`)
         tr.appendChild(td)
     })
     tbody.appendChild(tr)
@@ -305,7 +305,7 @@ const printBFS = () => {
     body.appendChild(table)
 
     const soln = createNode('div', ['block'])
-    const z = createNode('strong', [], `Z = ${checkDecimals($.objZ)}`)
+    const z = createNode('strong', [], `Z = ${checkDecimalPlaces($.objZ)}`)
     soln.appendChild(z)
     body.appendChild(soln)
     div.appendChild(body)
@@ -353,7 +353,7 @@ const printHeaderRowCol = (arr) => {
 
 const printHeaderNumRowCol = (arr, cls) => {
     return arr.map(c => {
-        const th = createNode('th', [], `${checkDecimals(c)}`)
+        const th = createNode('th', [], `${checkDecimalPlaces(c)}`)
         if (cls) th.classList.add('has-background-white-ter')
         return th
     })
@@ -403,7 +403,7 @@ const printTable = (phase) => {
     table.appendChild(foot)
 
     const tbody = createNode('tbody')
-    const matrixTable = $.matrixA.map(row => row.map(col => createNode('td', [], `${checkDecimals(col)}`)))
+    const matrixTable = $.matrixA.map(row => row.map(col => createNode('td', [], `${checkDecimalPlaces(col)}`)))
 
     const cb = printHeaderNumRowCol($.basis, 'has-background-white-ter')
     const cbv = printHeaderRowCol($.basicVars, 'has-background-white-ter')
@@ -447,7 +447,7 @@ const printRatio = (card) => {
     const trBody = card.querySelectorAll('tbody tr')
     trBody.forEach((tr, i) => {
         const r = $.ratio[i]
-        const txt = isFinite(r) ? `${checkDecimals(r)}` : 'infinity'
+        const txt = isFinite(r) ? `${checkDecimalPlaces(r)}` : 'infinity'
         const th = createNode('th', ['has-background-white-ter'], txt)
         tr.appendChild(th)
     })
@@ -469,12 +469,12 @@ const printEnteringLeavingVar = (card) => {
 
     const word = $.target === 'min' ? 'o mais baixo' : 'o mais alto'
     const ev1 = `Inserindo variável: Entre todos os custos relativos`
-    const ev2 = `${checkDecimals($.minmaxRCost)} é ${word}`
+    const ev2 = `${checkDecimalPlaces($.minmaxRCost)} é ${word}`
     const ev3 = `So ${$.variables[$.minmaxRCostIndex]} é a variável de entrada`
     const ev = `${ev1}, ${ev2}. ${ev3}.`
 
     const lv1 = `Saindo da variável: Entre todos os índices`
-    const lv2 = `${checkDecimals($.ratio[$.leavingIndex])} é o mais baixo`
+    const lv2 = `${checkDecimalPlaces($.ratio[$.leavingIndex])} é o mais baixo`
     const lv3 = `So ${$.basicVars[$.leavingIndex]} é a variável de saída`
     const lv = `${lv1}, ${lv2}. ${lv3}.`
 
@@ -494,7 +494,7 @@ const printAnswer = () => {
     body.appendChild(table)
 
     const soln = createNode('div', ['block'])
-    const z = createNode('strong', [], `Z = ${checkDecimals($.objZ)}`)
+    const z = createNode('strong', [], `Z = ${checkDecimalPlaces($.objZ)}`)
     soln.appendChild(z)
     body.appendChild(soln)
 
